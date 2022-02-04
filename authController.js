@@ -1,5 +1,6 @@
 const User = require('./models/User');
 const bcrypt = require('bcryptjs');
+const CryptoJS = require("crypto-js");
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { secret } = require('./config');
@@ -83,6 +84,11 @@ class authController {
       const decodedToken = jwt.verify(token.token, secret);
 
       const passwords = await Password.find({userId: decodedToken.id});
+      passwords.map(el => {
+        const decryptBytes = CryptoJS.AES.decrypt(el.password, secret);
+        const decryptPassword = decryptBytes.toString(CryptoJS.enc.Utf8);
+        el.password = decryptPassword;
+      })
       res.status(200).json(passwords);
     }
     catch (error) {
@@ -102,10 +108,10 @@ class authController {
 
       const { type, title, password } = req.body;
 
-      const hashPassword = bcrypt.hashSync(password, 7);
+      const hashPassword = CryptoJS.AES.encrypt(password, secret).toString();
 
       const newPassword = new Password({
-        userId: decodedToken._id,
+        userId: decodedToken.id,
         type,
         title,
         password: hashPassword,
