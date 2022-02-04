@@ -1,8 +1,7 @@
 const Router = require('express');
 const router = new Router();
 const controller = require('./authController');
-const {check, body} = require('express-validator');
-// const authMiddleware = require('./middleware/authMiddleware');
+const {check} = require('express-validator');
 
 router.post('/registration', [
   check('username', 'User\'s name can\'t be empty').notEmpty(),

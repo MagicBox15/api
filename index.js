@@ -1,13 +1,16 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const authRouter = require('./authRouter');
+const cookieParser = require('cookie-parser');
 
 const PORT = 3001;
 
 const app = express();
 
+app.use(cookieParser());
 app.use(express.json());
 app.use('/auth', authRouter);
+
 
 const start = async () => {
   try {

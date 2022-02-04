@@ -64,8 +64,9 @@ class authController {
         return res.status(400).json({message: 'Wrong password. Try again'})
       }
 
-      const token = generateAccessToken(user._id);
-      return res.json({token});
+      const token = generateAccessToken(user._id, user.username);
+      res.cookie(`token`, {token}, {httpOnly: true, secure: false});
+      return res.json({message: 'Login success'});
     }
     catch (error) {
       console.log(error);
@@ -75,23 +76,36 @@ class authController {
 
   async getPasswords(req, res) {
     try {
-      // const { username } = req.body
-      // const passwords = await Password.find({username});
-      // res.json(passwords);
+      const token= req.cookies.token;
+      if(!token) {
+        res.status(400).json({message: 'Please log in'})
+      }
+      const decodedToken = jwt.verify(token.token, secret);
+
+      const passwords = await Password.find({userId: decodedToken.id});
+      res.status(200).json(passwords);
     }
     catch (error) {
       console.log(error);
-      res.status(400).json({message: 'You haven\'t access'})
+      res.status(400).json({message: 'You don\'t have an access'})
     }
   }
 
   async postPasswords(req, res) {
     try {
+      const token= req.cookies.token;
+      if(!token) {
+        res.status(400).json({message: 'Please log in'})
+      }
+      const decodedToken = jwt.verify(token.token, secret);
+      console.log(decodedToken);
+
       const { type, title, password } = req.body;
 
       const hashPassword = bcrypt.hashSync(password, 7);
 
       const newPassword = new Password({
+        userId: decodedToken._id,
         type,
         title,
         password: hashPassword,
