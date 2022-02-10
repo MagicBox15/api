@@ -11,7 +11,7 @@ const generateAccessToken = (id, username) => {
     id,
     username,
   };
-  return jwt.sign(payload, secret, {expiresIn: '12h'});
+  return jwt.sign(payload, secret, {expiresIn: '15sec'});
 };
 
 class authController {
@@ -67,7 +67,8 @@ class authController {
       }
 
       const token = generateAccessToken(user._id, user.username);
-      res.cookie(`token`, {token}, {httpOnly: true, secure: false});
+      res.cookie(`token`, token, {httpOnly: true, secure: false});
+      
       return res.json({message: 'Login success'});
     }
     catch (error) {
@@ -76,13 +77,23 @@ class authController {
     }
   }
 
+  async logout(req, res) {
+    try {
+      res.clearCookie('token');
+      res.redirect('/')
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({message: 'Something going wrong'})
+    }
+  }
+
   async getPasswords(req, res) {
     try {
-      const token= req.cookies.token;
+      const token = req.cookies.token;
       if(!token) {
         res.status(400).json({message: 'Please log in'})
       }
-      const decodedToken = jwt.verify(token.token, secret);
+      const decodedToken = jwt.verify(token, secret);
 
       const passwords = await Password.find({userId: decodedToken.id});
       passwords.map(el => {
@@ -124,6 +135,33 @@ class authController {
       console.log(error);
       res.status(400).json({message: 'Something going wrong'})
     }
+  }
+
+  async deleteOnePassword(req, res) {
+    try {
+      await Password.deleteOne({
+       _id: req.body.id,
+      })
+      res.redirect('/passwords');
+     } catch (e) {
+      console.log(e)
+     }
+  }
+// долго грузит страницу после обновления данных
+  async updatePassword(req, res) {
+    try {
+      const { id, title, password } = req.body;
+
+      const hashPassword = CryptoJS.AES.encrypt(password, secret).toString();
+
+      await Password.updateOne({_id: id}, {
+        title: title,
+        password: hashPassword,
+      })
+      res.redirect(req.get('referer'));
+     } catch (e) {
+      console.log(e)
+     }
   }
 }
 
