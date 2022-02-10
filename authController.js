@@ -11,13 +11,12 @@ const generateAccessToken = (id, username) => {
     id,
     username,
   };
-  return jwt.sign(payload, secret, {expiresIn: '15sec'});
+  return jwt.sign(payload, secret, {expiresIn: '1h'});
 };
 
 class authController {
   async registration(req, res) {
     try {
-      console.log('Body', req.body)
       const errors = validationResult(req);
       if(!errors.isEmpty()) {
         return res.status(400).json({
@@ -67,7 +66,7 @@ class authController {
       }
 
       const token = generateAccessToken(user._id, user.username);
-      res.cookie(`token`, token, {httpOnly: true, secure: false});
+      res.cookie(`token`, {token}, {httpOnly: true, secure: false});
       
       return res.json({message: 'Login success'});
     }
@@ -80,7 +79,7 @@ class authController {
   async logout(req, res) {
     try {
       res.clearCookie('token');
-      res.redirect('/')
+      res.status(200).redirect('/login')
     } catch (error) {
       console.log(error);
       res.status(500).json({message: 'Something going wrong'})
@@ -93,7 +92,7 @@ class authController {
       if(!token) {
         res.status(400).json({message: 'Please log in'})
       }
-      const decodedToken = jwt.verify(token, secret);
+      const decodedToken = jwt.verify(token.token, secret);
 
       const passwords = await Password.find({userId: decodedToken.id});
       passwords.map(el => {
@@ -143,8 +142,8 @@ class authController {
        _id: req.body.id,
       })
       res.redirect('/passwords');
-     } catch (e) {
-      console.log(e)
+     } catch (error) {
+      console.log(error)
      }
   }
 // долго грузит страницу после обновления данных
@@ -158,9 +157,9 @@ class authController {
         title: title,
         password: hashPassword,
       })
-      res.redirect(req.get('referer'));
-     } catch (e) {
-      console.log(e)
+      location.reload()
+     } catch (error) {
+      console.log(error)
      }
   }
 }
