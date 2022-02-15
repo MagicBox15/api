@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { secret } = require('./config');
 const Password = require('./models/Password');
+const { redirect } = require('express/lib/response');
 
 const generateAccessToken = (id, username) => {
   const payload = {
@@ -20,8 +21,7 @@ class authController {
       const errors = validationResult(req);
       if(!errors.isEmpty()) {
         return res.status(400).json({
-          message: 'Registration error',
-          errors
+          message: 'Invalid entry',
         })
       }
 
@@ -30,7 +30,7 @@ class authController {
       const candidate = await User.findOne({username});
 
       if(candidate) {
-        return res.status(400).json({ message: 'User with this name already exists'})
+        return res.status(400).json({ message: 'User with this name already exists'});
       }
 
       const hashPassword = bcrypt.hashSync(password, 7);
@@ -40,18 +40,20 @@ class authController {
         password: hashPassword,
       });
       await user.save();
-      return res.json({message: 'User successfully registered'})
+      return res.status(200).json({ message: 'User successfully registered' })
       
     }
     catch (error) {
+      
       console.log(error);
-      res.status(400).json({message: 'Registration error'});
+      res.status(400).json({ message: 'Registration error' });
     }
   }
 
   async login(req, res) {
     try {
       const { username, password } = req.body;
+      console.log(req.body);
 
       const user = await User.findOne({username});
 
@@ -79,7 +81,7 @@ class authController {
   async logout(req, res) {
     try {
       res.clearCookie('token');
-      res.status(200).redirect('/login')
+      res.status(200).json({message: 'You have been logged out '}).redirect('/login')
     } catch (error) {
       console.log(error);
       res.status(500).json({message: 'Something going wrong'})
@@ -89,8 +91,9 @@ class authController {
   async getPasswords(req, res) {
     try {
       const token = req.cookies.token;
+
       if(!token) {
-        res.status(400).json({message: 'Please log in'})
+        res.status(400).json({message: 'Please log in'}).redirect('/login')
       }
       const decodedToken = jwt.verify(token.token, secret);
 
@@ -115,9 +118,14 @@ class authController {
         res.status(400).json({message: 'Please log in'})
       }
       const decodedToken = jwt.verify(token.token, secret);
-      console.log(decodedToken);
 
       const { type, title, password } = req.body;
+
+      const newPas = await Password.findOne({userId: decodedToken.id, title: title});
+
+      if(newPas) {
+        return res.status(400).json({ message: 'Title should be unique'});
+      }
 
       const hashPassword = CryptoJS.AES.encrypt(password, secret).toString();
 
@@ -135,18 +143,19 @@ class authController {
       res.status(400).json({message: 'Something going wrong'})
     }
   }
-
+// долго грузит страницу после обновления или удаления данных
+// редирект делает кучу запросов
   async deleteOnePassword(req, res) {
     try {
       await Password.deleteOne({
        _id: req.body.id,
       })
-      res.redirect('/passwords');
+      redirect('/passwords')
      } catch (error) {
       console.log(error)
      }
   }
-// долго грузит страницу после обновления данных
+
   async updatePassword(req, res) {
     try {
       const { id, title, password } = req.body;
@@ -157,7 +166,6 @@ class authController {
         title: title,
         password: hashPassword,
       })
-      location.reload()
      } catch (error) {
       console.log(error)
      }
